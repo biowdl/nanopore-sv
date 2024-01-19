@@ -5,15 +5,22 @@ workflow CallVariants {
         File bamIn
         File bamIndexIn   
         File refFastaIn
+        File refFastaIndexIn
         # File clair3Model
     }
 
-    # call CallClair3 { 
-    #     input: 
-    #         bamIn = bamIn,
-    #         refFastaIn = refFastaIn,
-    #         clair3Model = clair3Model,
-    # }
+    call CallClair3 { 
+        input: 
+            bamIn = bamIn,
+            refFastaIn = refFastaIn,
+            bamIndexIn = bamIndexIn,
+            refFastaIndexIn = refFastaIndexIn,
+    }
+
+    call Unzip {
+        input:
+            zippedVcf = CallClair3.outVcf
+    }
 
     call CallCuteSV { 
         input: 
@@ -37,7 +44,8 @@ workflow CallVariants {
     }
 
     output {
-        Array[File] vcfList = [CallCuteSV.outVcf, CallSniffles.outVcf, CallSVIM.outVcf]
+        Array[File] vcfList = [CallCuteSV.outVcf, CallSniffles.outVcf, CallSVIM.outVcf, Unzip.outVcf]
+        # Array[File] vcfList = [CallCuteSV.outVcf, CallSniffles.outVcf, Unzip.outVcf]
     }
 }
 
@@ -47,26 +55,51 @@ task CallClair3 {
         File bamIn
         File bamIndexIn   
         File refFastaIn
-        File clair3Model
+        File refFastaIndexIn 
+        Int threads = 20
     }
 
     command {
         run_clair3.sh \
-            ~{bamIn} \
-            ~{refFastaIn} \
+            --bam_fn=~{bamIn} \
+            --ref_fn=~{refFastaIn} \
             --platform='ont' \
             --enable_long_indel \
             --fast_mode \
-            --model_path=~{clair3Model} \
-            --threads=20 \
-            --output=output/vcf/clair3_out.vcf \
+            --var_pct_phasing=0.7 \
+            --model_path=/exports/sascstudent/samvank/conda2/bin/models/ont \
+            --threads=~{threads} \
+            --output=output/ 
+        mv output/merge_output.vcf.gz ./clair3_out.vcf.gz
     }
 
     output {
-        File outVcf = "clair3_out.vcf"
+        File outVcf = "clair3_out.vcf.gz"
     }
 
     runtime {
+        # docker: "/exports/sascstudent/samvank/code/wdl/clair3.sif"
+        cpu: "~{threads}"
+        memory: "20G"
+        time_minutes: 1400 
+    }
+}
+
+task Unzip {
+    input {
+        File zippedVcf
+    }
+
+    command {
+        pbgzip -d -c ~{zippedVcf} > ~{sub(basename(zippedVcf), "vcf.gz", "vcf")}
+    }
+
+    output {
+        File outVcf = "~{sub(basename(zippedVcf), 'vcf.gz', 'vcf')}"
+    }
+
+    runtime {
+        docker: "quay.io/biocontainers/pbgzip:2016.08.04--h2f06484_1"
         cpu: 4
         memory: "20G"
         time_minutes: 240 
@@ -90,7 +123,7 @@ task CallCuteSV {
             ~{bamIn} \
             ~{refFastaIn} \
             cutesv_out.vcf \
-            workfolder/
+            ./
     }
 
     output {
@@ -98,6 +131,7 @@ task CallCuteSV {
     }
 
     runtime {
+        docker: "quay.io/biocontainers/cutesv:2.0.2--pyhdfd78af_0"
         cpu: 4
         memory: "20G"
         time_minutes: 240 
@@ -126,6 +160,7 @@ task CallSniffles {
 
 
     runtime {
+        docker: "quay.io/biocontainers/sniffles:2.0.7--pyhdfd78af_0"
         cpu: 4
         memory: "20G"
         time_minutes: 240 
@@ -147,13 +182,15 @@ task CallSVIM {
             workfolder/ \
             ~{bamIn} \
             ~{refFastaIn} 
+        mv workfolder/variants.vcf ./svim_out.vcf
     }
 
     output {
-        File outVcf = "out.vcf"
+        File outVcf = "svim_out.vcf"
     }
 
     runtime {
+        docker: "quay.io/biocontainers/svim:2.0.0--pyhdfd78af_0"
         cpu: 4
         memory: "20G"
         time_minutes: 240 

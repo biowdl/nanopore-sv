@@ -1,8 +1,7 @@
 import sys
-import argparse
 import itertools
 
-MINIMUM_SIZE = 2
+MINIMUM_SIZE = 1
 
 
 def generate_combinations(vcfListFile: str, minimumSize) -> list:

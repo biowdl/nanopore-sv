@@ -1,14 +1,19 @@
 version 1.0
 
 import "call.wdl" as CallVcf
+import "preprocess.wdl" as PreProcess
+import "combining.wdl" as Combining
 
 workflow Benchmark {
     input {
+        String name
         File bamIn
         File bamIndexIn
         File refFastaIn
+        File refFastaIndexIn
         File benchmarkVcf
         File benchmarkIndex
+        Boolean? inclusive
         # File clair3_model
     }
 
@@ -16,30 +21,28 @@ workflow Benchmark {
         input:
             bamIn = bamIn,
             bamIndexIn = bamIndexIn,
-            refFastaIn = refFastaIn
+            refFastaIn = refFastaIn,
+            refFastaIndexIn = refFastaIndexIn,
             # clair3_model = clair3_model
     }
 
-    call GenerateCombinations {
+    call Combining.GenerateCombinations
+    {
         input:
+            inclusive = if defined(inclusive) && inclusive then true else false,
             vcfList = CallVariants.vcfList
     }
 
     scatter(combinationFile in GenerateCombinations.combinations)
     {
-        #survivor 
-        call Survivor {
+        call PreProcess.DoPreProcessing{
             input:
-                combinationFile = combinationFile
-        }
-        call PreProcess {
-            input:
-                ref = refFastaIn,
-                combination = Survivor.combined
+                refFastaIn = refFastaIn,
+                combination = combinationFile
         }
         call Truvari {
             input:
-                combinationPair = combination,
+                combinationPair = DoPreProcessing.processed,
                 benchmarkVcf = benchmarkVcf,
                 benchmarkIndex = benchmarkIndex
         }
@@ -47,75 +50,25 @@ workflow Benchmark {
 
     call DrawUpset {
         input:
-            benchmarks = Truvari.benchmark
+            benchmarks = Truvari.benchmark,
+            name = name
     }
+    
 
     output {
         File output_image = DrawUpset.out
+        Array[File] combinations = GenerateCombinations.combinations
+        Array[File] vcfList = CallVariants.vcfList
+        Array[Pair[String, File]] benchmarks = Truvari.benchmark
     }
 }
 
 
-task GenerateCombinations {
-    input {
-        Array[File] vcfList
-    }
 
-    command {
-        python3 /exports/sascstudent/samvank/code/wdl/generate_combinations.py \
-            ~{sep="," vcfList}
-    }
-
-    output {
-        Array[File] combinations = read_lines(stdout())
-    }
-
-    runtime {
-        memory: "20G"
-        time_minutes: 240 
-    }
-
-    parameter_meta {
-        vcfList: "array of vcf-files"
-    }
-}
-
-
-task Survivor {
-    input {
-        File combinationFile
-    }
-
-    command {
-        SURVIVOR merge \
-            ~{combinationFile} \
-            1000 \
-            2 \
-            0 \
-            0 \
-            0 \
-            30 \
-            ~{basename(combinationFile)}
-        
-    }
-
-    output {
-        File combined = basename(combinationFile)
-    }
-
-    runtime {
-        memory: "20G"
-        time_minutes: 240 
-        cpu: 4
-    }
-
-    parameter_meta {
-        combinationFile: "file containing file-adresses (seperated by newlines) of vcf-files to merge"
-    }
-}
 
 
 task PreProcess {
+    #
     input {
         File combination
         File ref
@@ -148,6 +101,7 @@ task PreProcess {
 
 
 task Truvari {
+    # Benchmark 
     input {
         Pair[File, File] combinationPair
         File benchmarkVcf
@@ -155,19 +109,25 @@ task Truvari {
     }
 
     command {
+        set -e -o pipefail
+        mkdir workfolder
+        cp ~{combinationPair.right} workfolder/
+        cp ~{combinationPair.left} workfolder/
+        less workfolder/~{basename(combinationPair.left)}
         truvari bench \
-            -c ~{combinationPair.left} \
+            -c workfolder/~{basename(combinationPair.left)} \
             -b ~{benchmarkVcf} \
-            -o ~{basename(combinationPair.left)} \
-            --passonly
+            -o truvari_output 
+        mv truvari_output/summary.json truvari_output/~{basename(combinationPair.left)}-summary.json
     }
 
     output {
         Pair[String, File] benchmark = 
-            (basename(combinationPair.left), "~{basename(combinationPair.left)}/summary.json")
+            (basename(combinationPair.left), "truvari_output/~{basename(combinationPair.left)}-summary.json")
     }
 
     runtime {
+        docker: "quay.io/biocontainers/truvari:4.0.0--pyhdfd78af_0"
         memory: "20G"
         time_minutes: 240 
         cpu: 4
@@ -182,12 +142,15 @@ task Truvari {
 
 
 task DrawUpset {
+    # Draw upset-plot for precision, recall, f1-score and variant-amount
     input {
         Array[Pair[String, File]] benchmarks
+        String name
     }
 
     command {
-        python3 /exports/sascstudent/samvank/code/wdl/drawUpset.py ~{write_json(benchmarks)}
+        echo "test"
+        /exports/sascstudent/samvank/conda2/bin/python3 /exports/sascstudent/samvank/code/wdl/drawUpset.py ~{write_json(benchmarks)} ~{name}
     }
 
     output {

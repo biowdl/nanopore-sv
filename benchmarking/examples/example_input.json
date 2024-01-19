@@ -1,0 +1,11 @@
+{
+  "Benchmark.name": "",
+  "Benchmark.bamIn": "",
+  "Benchmark.bamIndexIn": "",
+  "Benchmark.refFastaIn": "",
+  "Benchmark.refFastaIndexIn": "",
+  "Benchmark.benchmarkVcf": "",
+  "Benchmark.benchmarkIndex": "",
+  "Benchmark.inclusive": false
+}
+

@@ -14,7 +14,6 @@ workflow Benchmark {
         File benchmarkVcf
         File benchmarkIndex
         Boolean? inclusive
-        # File clair3_model
     }
 
     call CallVcf.CallVariants {
@@ -23,7 +22,6 @@ workflow Benchmark {
             bamIndexIn = bamIndexIn,
             refFastaIn = refFastaIn,
             refFastaIndexIn = refFastaIndexIn,
-            # clair3_model = clair3_model
     }
 
     call Combining.GenerateCombinations
@@ -64,11 +62,8 @@ workflow Benchmark {
 }
 
 
-
-
-
 task PreProcess {
-    #
+    # Perform preprocessing before benchmarking step (normalizing, decomposing, zipping and indexing)
     input {
         File combination
         File ref
@@ -101,7 +96,7 @@ task PreProcess {
 
 
 task Truvari {
-    # Benchmark 
+    # Benchmarking 
     input {
         Pair[File, File] combinationPair
         File benchmarkVcf
@@ -150,7 +145,7 @@ task DrawUpset {
 
     command {
         echo "test"
-        /exports/sascstudent/samvank/conda2/bin/python3 /exports/sascstudent/samvank/code/wdl/drawUpset.py ~{write_json(benchmarks)} ~{name}
+        /path/python3 scripts/drawUpset.py ~{write_json(benchmarks)} ~{name}
     }
 
     output {

@@ -50,10 +50,20 @@ task ExclusivePrepare {
         Array[File] vcfList
     }
 
-    command {
-        python3 /exports/sascstudent/samvank/code/wdl/generate_one_combination.py \
-            ~{sep="," vcfList}
-    }
+    command<<<
+    python <<CODE  
+        vcfListFile = ~{sep="," vcfList}
+        vcfList = vcfListFile.split(",")
+        combination = [x.strip() for x in vcfList]
+        fl = open("vcf_list_for_survivor", "w")
+        print("vcf_list_for_survivor")
+        toWrite = "" 
+        for vcf in combination:
+            toWrite += vcf + "\n"
+        fl.write(toWrite)
+        fl.close()
+    CODE
+    >>>
 
     output {
         File mergingFile = "vcf_list_for_survivor"
@@ -117,7 +127,7 @@ task ExclusiveGenerateCombinations {
     command {
         mkdir survivor_output
         cd survivor_output
-        python3 /exports/sascstudent/samvank/code/wdl/generate_combinations_from_suppvec.py \
+        python3 scripts/generate_combinations_from_suppvec.py \
             ~{merged}
     }
 
@@ -144,10 +154,32 @@ task InclusivePrepare {
         Array[File] vcfList
     }
 
-    command {
-        python3 /exports/sascstudent/samvank/code/wdl/generate_combinations.py \
-            ~{sep="," vcfList}
-    }
+    command <<<
+    python <<CODE
+        import itertools
+
+        MINIMUM_SIZE = 1
+
+        vcfListFile = ~{sep="," vcfList}
+        combinations = generate_combinations(args, MINIMUM_SIZE)
+        vcfList = vcfListFile.split(",")
+        vcfList = [x.strip() for x in vcfList]
+        combinations = []
+        for length in range(MINIMUM_SIZE, len(vcfList)+1):
+            combinations.extend(itertools.combinations(vcfList, length))
+
+        for combination in combinations:
+            combinationEnd = [x.split("/")[-1] for x in combination]
+            combinationName = "-".join(combinationEnd)
+            fl = open(combinationName, "w")
+            print(combinationName)
+            toWrite = "" 
+            for vcf in combination:
+                toWrite += vcf + "\n"
+            fl.write(toWrite)
+            fl.close()
+    CODE
+    >>>
 
     output {
         Array[File] combinations = read_lines(stdout())

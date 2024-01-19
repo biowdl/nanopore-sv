@@ -13,6 +13,7 @@ workflow Benchmark {
         File refFastaIndexIn
         File benchmarkVcf
         File benchmarkIndex
+        File clairModel
         Boolean? inclusive
     }
 
@@ -22,6 +23,7 @@ workflow Benchmark {
             bamIndexIn = bamIndexIn,
             refFastaIn = refFastaIn,
             refFastaIndexIn = refFastaIndexIn,
+            clairModel = clairModel,
     }
 
     call Combining.GenerateCombinations
@@ -145,7 +147,7 @@ task DrawUpset {
 
     command {
         echo "test"
-        /path/python3 scripts/drawUpset.py ~{write_json(benchmarks)} ~{name}
+        python3 scripts/drawUpset.py ~{write_json(benchmarks)} ~{name}
     }
 
     output {

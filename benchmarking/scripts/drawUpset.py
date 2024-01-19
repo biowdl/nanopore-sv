@@ -3,7 +3,6 @@ import upsetplot
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import json
 import sys
 
@@ -169,7 +168,6 @@ for file in summaries:
     inputData[2].append(check_input(summary["recall"]))
     inputData[3].append(check_input(summary["f1"]))
     inputData[4].append(summary["comp cnt"])
-    # print(f"{fileNameSeperated} : {summary}")
 
 
 rowSet = set()
@@ -178,7 +176,6 @@ for combination in inputData[0]:
         rowSet.add(item)
 amountOfRows = len(rowSet)
 
-# fig, axs = plt.subplots(3, 1, layout="constrained")
 figWidth = 10
 fig = plt.figure(layout="constrained", figsize=(figWidth,figWidth * 1.3))
 subfigs = fig.subfigures(4,1)
@@ -192,17 +189,10 @@ recall_upset = upsetplot.UpSet(data=recall_plot, facecolor="red", sort_by="input
 f1_plot = upsetplot.from_memberships(inputData[0], data=inputData[3])
 f1_upset = upsetplot.UpSet(data = f1_plot, sort_by="input", sort_categories_by="input")
 
-# upsetplot.plot(f1_plot, sort_by="input", sort_categories_by="input")
-# f1_upset.plot(fig = fig)
-# plot_intersections(f1_upset, inputData[4],"variant number", subfigs[0], figWidth)
 subfig_plotting(variant_number_upset, subfigs[0], figWidth, ylabel="variant number", log_y_axis=True)
 subfig_plotting(precision_upset, subfigs[1], figWidth, ylabel="precision")
 subfig_plotting(recall_upset, subfigs[2], figWidth, ylabel="recall")
 subfig_plotting(f1_upset, subfigs[3], figWidth, ylabel="f1")
 
-# f1_upset.plot_totals(axs[1])
 name = "upsetplot.png"
-
-
-# plt.ylabel("f1-score")
 plt.savefig(name, dpi=300)

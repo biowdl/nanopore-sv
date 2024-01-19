@@ -6,7 +6,7 @@ workflow CallVariants {
         File bamIndexIn   
         File refFastaIn
         File refFastaIndexIn
-        # File clair3Model
+        File clairModel
     }
 
     call CallClair3 { 
@@ -15,11 +15,12 @@ workflow CallVariants {
             refFastaIn = refFastaIn,
             bamIndexIn = bamIndexIn,
             refFastaIndexIn = refFastaIndexIn,
+            model = clairModel,
     }
 
     call Unzip {
         input:
-            zippedVcf = CallClair3.outVcf
+            zippedVcf = CallClair3.outVcf,
     }
 
     call CallCuteSV { 
@@ -45,7 +46,6 @@ workflow CallVariants {
 
     output {
         Array[File] vcfList = [CallCuteSV.outVcf, CallSniffles.outVcf, CallSVIM.outVcf, Unzip.outVcf]
-        # Array[File] vcfList = [CallCuteSV.outVcf, CallSniffles.outVcf, Unzip.outVcf]
     }
 }
 
@@ -56,6 +56,7 @@ task CallClair3 {
         File bamIndexIn   
         File refFastaIn
         File refFastaIndexIn 
+        File model
         Int threads = 20
     }
 
@@ -67,7 +68,7 @@ task CallClair3 {
             --enable_long_indel \
             --fast_mode \
             --var_pct_phasing=0.7 \
-            --model_path=/exports/sascstudent/samvank/conda2/bin/models/ont \
+            --model_path=~{model} \
             --threads=~{threads} \
             --output=output/ 
         mv output/merge_output.vcf.gz ./clair3_out.vcf.gz
@@ -78,7 +79,6 @@ task CallClair3 {
     }
 
     runtime {
-        # docker: "/exports/sascstudent/samvank/code/wdl/clair3.sif"
         cpu: "~{threads}"
         memory: "20G"
         time_minutes: 1400 

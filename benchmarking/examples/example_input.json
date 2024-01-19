@@ -6,6 +6,7 @@
   "Benchmark.refFastaIndexIn": "",
   "Benchmark.benchmarkVcf": "",
   "Benchmark.benchmarkIndex": "",
+  "Benchmark.clairModel": "",
   "Benchmark.inclusive": false
 }
 

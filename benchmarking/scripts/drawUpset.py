@@ -115,7 +115,8 @@ def subfig_plotting(uplot, fig, figWidth, ylabel="intersection_size", log_y_axis
             bar_label = f"{inters[i]:.2e}"
         else:
             bar_label = f"{inters[i]:.2f}"
-        plt.text(inters[i], i, bar_label, ha="right", va="center")
+        spot = inters[i] if inters[i] > 0 else 0
+        plt.text(spot, i, bar_label, ha="right", va="center")
 
     for plot in uplot._subset_plots:
         ax = uplot._reorient(fig.add_subplot)(specs[plot['id']],
@@ -149,15 +150,17 @@ def subfig_plotting(uplot, fig, figWidth, ylabel="intersection_size", log_y_axis
     return out
 
 
-def check_input(possible_input: int or None) -> int:
+def check_input(possible_input: int | None) -> int:
     if possible_input is None:
-        return -1
+        return 0
     else:
         return possible_input
     
 
 summaries = json.load(open(sys.argv[1], "r"))
+bench_name = sys.argv[2]
 inputData = [[],[],[],[],[]]
+summaries.sort(key=lambda x: len(x["left"].replace(".n.d.vcf.gz", "").replace(".vcf", "").split("-")))
 for file in summaries:
     fileName = file["left"]
     fileAdress = file["right"]
@@ -179,6 +182,7 @@ amountOfRows = len(rowSet)
 figWidth = 10
 fig = plt.figure(layout="constrained", figsize=(figWidth,figWidth * 1.3))
 subfigs = fig.subfigures(4,1)
+fig.subtitle(bench_name, fontsize=20) 
 
 variant_number_plot = upsetplot.from_memberships(inputData[0], data=inputData[4])
 variant_number_upset = upsetplot.UpSet(data=variant_number_plot, facecolor="green", sort_by="input", sort_categories_by="input")

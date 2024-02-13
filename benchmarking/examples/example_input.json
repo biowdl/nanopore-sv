@@ -7,6 +7,8 @@
   "Benchmark.benchmarkVcf": "",
   "Benchmark.benchmarkIndex": "",
   "Benchmark.clairModel": "",
-  "Benchmark.inclusive": false
+  "Benchmark.scriptFolder": "/home/user/benchmarking/scripts",
+  "Benchmark.variantCallers": ["CuteSV","Sniffles", "SVIM", "Clair3"],
+  "Benchmark.inclusive": true
 }
 

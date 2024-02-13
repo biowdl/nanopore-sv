@@ -55,7 +55,8 @@ workflow Benchmark {
     call DrawUpset {
         input:
             benchmarks = Truvari.benchmark,
-            name = name
+            name = name,
+            scriptFolder = scriptFolder
     }
     
 
@@ -114,11 +115,12 @@ task DrawUpset {
     input {
         Array[Pair[String, File]] benchmarks
         String name
+        File scriptFolder
     }
 
     command {
         echo "test"
-        python3 scripts/drawUpset.py ~{write_json(benchmarks)} ~{name}
+        python3 ~{scriptFolder}/drawUpset.py ~{write_json(benchmarks)} ~{name}
     }
 
     output {

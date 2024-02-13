@@ -3,7 +3,9 @@ version 1.0
 workflow GenerateCombinations {
     input {
         Boolean inclusive
+        File scriptFolder
         Array[File] vcfList
+        Array[String] variantCallers
     }
 
     if (!inclusive) {
@@ -19,7 +21,9 @@ workflow GenerateCombinations {
 
         call ExclusiveGenerateCombinations {
             input:
-                merged = ExclusiveMerge.merged
+                merged = ExclusiveMerge.merged,
+                variantCallers = variantCallers,
+                scriptFolder = scriptFolder
         }
 
     }
@@ -46,14 +50,13 @@ workflow GenerateCombinations {
 
 
 task ExclusivePrepare {
-    # test
     input {
         Array[File] vcfList
     }
 
     command<<<
-    python <<CODE  
-        vcfListFile = ~{sep="," vcfList}
+        python <<CODE  
+        vcfListFile = '~{sep="," vcfList}'
         vcfList = vcfListFile.split(",")
         combination = [x.strip() for x in vcfList]
         fl = open("vcf_list_for_survivor", "w")
@@ -63,7 +66,7 @@ task ExclusivePrepare {
             toWrite += vcf + "\n"
         fl.write(toWrite)
         fl.close()
-    CODE
+        CODE
     >>>
 
     output {
@@ -72,7 +75,7 @@ task ExclusivePrepare {
 
     runtime {
         memory: "10G"
-        time_minutes: 240 
+        time_minutes: 20
     }
 
     parameter_meta {
@@ -96,7 +99,7 @@ task ExclusiveMerge {
             0 \
             0 \
             0 \
-            30 \
+            50 \
             all_merged.vcf
     }
 
@@ -123,13 +126,16 @@ task ExclusiveGenerateCombinations {
 
     input {
         File merged
+        Array[String] variantCallers 
+        File scriptFolder
     }
 
     command {
         mkdir survivor_output
         cd survivor_output
-        python3 scripts/generate_combinations_from_suppvec.py \
-            ~{merged}
+        python3 ~{scriptFolder}/generate_combinations_from_suppvec.py \
+            ~{merged} \
+            ~{sep="," variantCallers}
     }
 
     output {
@@ -156,15 +162,13 @@ task InclusivePrepare {
     }
 
     command <<<
-    python <<CODE
+        python <<CODE
         import itertools
 
         MINIMUM_SIZE = 1
 
         vcfListFile = ~{sep="," vcfList}
-        combinations = generate_combinations(args, MINIMUM_SIZE)
-        vcfList = vcfListFile.split(",")
-        vcfList = [x.strip() for x in vcfList]
+        vcfList = [x.strip() for x in vcfListFile.split(",")]
         combinations = []
         for length in range(MINIMUM_SIZE, len(vcfList)+1):
             combinations.extend(itertools.combinations(vcfList, length))
@@ -179,7 +183,7 @@ task InclusivePrepare {
                 toWrite += vcf + "\n"
             fl.write(toWrite)
             fl.close()
-    CODE
+        CODE
     >>>
 
     output {
@@ -204,49 +208,15 @@ task InclusiveGenerateCombinations {
     }
 
     command {
-        if [[ $(cat ~{combinationFile} | wc -l) -eq 1 ]]
-        then
-            cp $(cat ~{combinationFile}) ./
-        elif [[ $(cat ~{combinationFile} | wc -l) -eq 2 ]]
-        then
-            echo "yes"
-            SURVIVOR merge \
-                ~{combinationFile} \
-                1000 \
-                2 \
-                0 \
-                0 \
-                0 \
-                30 \
-                ~{basename(combinationFile)}
-        elif [[ $(cat ~{combinationFile} | wc -l) -eq 3 ]]
-        then
-            echo "yes"
-            SURVIVOR merge \
-                ~{combinationFile} \
-                1000 \
-                3 \
-                0 \
-                0 \
-                0 \
-                30 \
-                ~{basename(combinationFile)}
-        elif [[ $(cat ~{combinationFile} | wc -l) -eq 4 ]]
-        then
-            echo "yes"
-            SURVIVOR merge \
-                ~{combinationFile} \
-                1000 \
-                4 \
-                0 \
-                0 \
-                0 \
-                30 \
-                ~{basename(combinationFile)}
-        else
-            echo "no"
-            cp $(cat ~{combinationFile}) ./
-        fi
+        SURVIVOR merge \
+            ~{combinationFile} \
+            1000 \
+            $(cat ~{combinationFile} | wc -l) \
+            0 \
+            0 \
+            0 \
+            50 \
+            ~{basename(combinationFile)}
     }
 
     output {

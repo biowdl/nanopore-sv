@@ -14,6 +14,8 @@ workflow Benchmark {
         File benchmarkVcf
         File benchmarkIndex
         File clairModel
+        File scriptFolder
+        Array[String] variantCallers
         Boolean? inclusive
     }
 
@@ -30,7 +32,9 @@ workflow Benchmark {
     {
         input:
             inclusive = if defined(inclusive) && inclusive then true else false,
-            vcfList = CallVariants.vcfList
+            vcfList = CallVariants.vcfList,
+            scriptFolder = scriptFolder,
+            variantCallers = variantCallers
     }
 
     scatter(combinationFile in GenerateCombinations.combinations)
@@ -60,39 +64,6 @@ workflow Benchmark {
         Array[File] combinations = GenerateCombinations.combinations
         Array[File] vcfList = CallVariants.vcfList
         Array[Pair[String, File]] benchmarks = Truvari.benchmark
-    }
-}
-
-
-task PreProcess {
-    # Perform preprocessing before benchmarking step (normalizing, decomposing, zipping and indexing)
-    input {
-        File combination
-        File ref
-    }
-
-    command {
-        set -e -o pipefail
-        vt normalize -n -r ~{ref} ~{combination} -o ~{basename(combination)}.n.vcf
-        vt decompose ~{basename(combination)}.n.vcf -o ~{basename(combination)}.n.d.vcf
-        bgzip ~{basename(combination)}.n.d.vcf
-        bcftools index -t ~{basename(combination)}.n.d.vcf.gz
-    }
-
-    output {
-        Pair[File, File] processed =
-            ("~{basename(combination)}.n.d.vcf.gz", "~{basename(combination)}.n.d.vcf.gz.tbi")  
-    }
-
-    runtime {
-        memory: "20G"
-        time_minutes: 240 
-        cpu: 4
-    }
-
-    parameter_meta {
-        combination: "merged vcf-file"
-        ref: "fasta file containing reference genome"
     }
 }
 

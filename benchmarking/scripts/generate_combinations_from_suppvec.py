@@ -3,7 +3,7 @@ import sys
 import itertools
 
 # Ordering should match SURVIVOR output
-CALLER_LIST = ["cutesv", "sniffles", "svim", "clair"]
+CALLER_LIST = [x for x in sys.argv[2].split(",")]
 
 def get_header(vcf_file_name):
     vcf_header = ""

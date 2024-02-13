@@ -46,6 +46,7 @@ workflow GenerateCombinations {
 
 
 task ExclusivePrepare {
+    # test
     input {
         Array[File] vcfList
     }
